@@ -8,9 +8,13 @@ class ControllerBase
   attr_reader :req, :res, :params
 
   # Setup the controller
-  def initialize(req, res)
+  def initialize(req, res, params = {})
     @req = req 
     @res = res
+
+    @params = params
+    add_request_params!
+
     @already_built_response = false
   end
 
@@ -23,7 +27,7 @@ class ControllerBase
   def redirect_to(url)
     @res['Location'] = url
     @res.status = 302
-    @session.store_session(@res)
+    session.store_session(@res)
 
     if already_built_response?
       raise 'Double render error'
@@ -38,7 +42,7 @@ class ControllerBase
   def render_content(content, content_type)
     @res['Content-Type'] = content_type
     @res.write(content)
-    @session.store_session(@res)
+    session.store_session(@res)
     
     if already_built_response?
       raise 'Double render error'
@@ -73,7 +77,13 @@ class ControllerBase
 
   # use this with the router to call action_name (:index, :show, :create...)
   def invoke_action(name)
-    Router.send(name)
+    self.send(name)
+    render(name) unless already_built_response?
+  end
+
+  private
+  def add_request_params!
+    @req.params.each {|k, v| @params[k] = v}
   end
 end
 
